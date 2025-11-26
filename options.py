@@ -117,6 +117,7 @@ class OptionMaxTokens(io.ComfyNode):
                     tooltip="An upper bound for the number of tokens that can be generated for a response",
                     default=512,
                     min=1,
+                    max=1000000, # if max is not set, ComfyUI will applied a default max value at 2048: we do not want this too low value
                     control_after_generate=False,
                     display_mode=io.NumberDisplay.number,
                 ),
