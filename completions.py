@@ -3,6 +3,7 @@ from io import BytesIO
 import json
 import time
 from typing import Any
+import wave  # <-- Added for converting raw audio arrays to WAV format
 
 import torch
 import numpy as np
@@ -27,6 +28,40 @@ def comfy_image_to_base64_png_url(image: torch.Tensor) -> str:
     b64_png = base64.b64encode(buffer.getvalue())
     # Return the formated string URL
     return f"data:image/png;base64,{b64_png.decode('utf-8')}"
+
+
+def comfy_audio_to_base64_wav(audio: dict[str, Any]) -> tuple[str, str]:
+    # ComfyUI audio format is a dictionary: {"waveform": torch.Tensor, "sample_rate": int}
+    waveform = audio.get("waveform")
+    sample_rate = audio.get("sample_rate", 44100)
+    
+    if waveform is None:
+        raise ValueError("Provided audio input contains no waveform.")
+        
+    # Take the first channel/batch element if shape is [batch, channels, samples]
+    if len(waveform.shape) == 3:
+        waveform = waveform[0]
+        
+    # Clamp float values to [-1.0, 1.0] and convert to 16-bit PCM
+    waveform_np = waveform.cpu().numpy()
+    waveform_np = np.clip(waveform_np, -1.0, 1.0)
+    waveform_np = (waveform_np * 32767.0).astype(np.int16)
+    
+    # Transpose [channels, samples] -> [samples, channels] for writing wave frames
+    if len(waveform_np.shape) == 2:
+        waveform_np = waveform_np.T
+        
+    # Write to an in-memory buffer using Python's wave library
+    buffer = BytesIO()
+    with wave.open(buffer, "wb") as wav_file:
+        n_channels = waveform_np.shape[1] if len(waveform_np.shape) > 1 else 1
+        wav_file.setnchannels(n_channels)
+        wav_file.setsampwidth(2)  # 2 bytes = 16-bit
+        wav_file.setframerate(sample_rate)
+        wav_file.writeframes(waveform_np.tobytes())
+        
+    b64_wav = base64.b64encode(buffer.getvalue())
+    return b64_wav.decode("utf-8"), "wav"
 
 
 def format_usage(usage: CompletionUsage | None) -> str | None:
@@ -94,7 +129,7 @@ class ChatCompletion(io.ComfyNode):
             node_id="OAIAPI_ChatCompletion",
             display_name="OpenAI API - Chat Completion",
             category="OpenAI API",
-            description="Generates text responses using OpenAI's chat completion API. Be sure to indicate a Vision Language Model if you are using an image input.",
+            description="Generates text responses using OpenAI's chat completion API. Be sure to indicate a Vision/Audio Language Model if you are using image or audio inputs.",
             inputs=[
                 ParamClient.Input(
                     id="client",
@@ -146,6 +181,12 @@ class ChatCompletion(io.ComfyNode):
                     optional=True,
                     tooltip="Image(s) to include in the request",
                 ),
+                io.Audio.Input(
+                    id="audio",
+                    display_name="audio",
+                    optional=True,
+                    tooltip="Audio file to include in the request",
+                ),
             ],
             outputs=[
                 io.String.Output(
@@ -188,6 +229,7 @@ class ChatCompletion(io.ComfyNode):
                 history: HistoryPayload | None = None,
                 options: OptionsPayload | None = None,
                 images: list[torch.Tensor] | None = None,
+                audio: dict[str, Any] | None = None,
                 force_regen: bool = False,
                 ) -> io.NodeOutput:
         # Handle options
@@ -265,26 +307,44 @@ class ChatCompletion(io.ComfyNode):
                         "role": "system",  # need literal for type hint check
                         "content": system_prompt,
                     })
-        # Handle user message
-        if images is not None:
-            # Build multi modal content
+        # Handle user message (supporting text, images, and audio multimodally)
+        if images is not None or audio is not None:
             content: list[ChatCompletionContentPartParam] = []
-            for image in images:
-                content.append(
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": comfy_image_to_base64_png_url(image)
-                        }
-                    }
-                )
+            
+            # 1. Add user prompt text
+            if prompt:
                 content.append(
                     {
                         "type": "text",
                         "text": prompt
                     }
                 )
-            # Add the multi-modal content to the messages list
+            
+            # 2. Add images if any
+            if images is not None:
+                for image in images:
+                    content.append(
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": comfy_image_to_base64_png_url(image)
+                            }
+                        }
+                    )
+            
+            # 3. Add audio if any
+            if audio is not None:
+                b64_audio, audio_format = comfy_audio_to_base64_wav(audio)
+                content.append(
+                    {
+                        "type": "input_audio",
+                        "input_audio": {
+                            "data": b64_audio,
+                            "format": audio_format
+                        }
+                    }
+                )
+                
             messages.append(
                 {
                     "role": "user",

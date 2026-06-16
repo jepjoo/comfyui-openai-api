@@ -406,3 +406,126 @@ class OptionExtraBody(io.ComfyNode):
         return io.NodeOutput(
             OptionsPayload(options)
         )
+
+
+class OptionTopK(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="OAIAPI_TopK",
+            display_name="OpenAI API - Top K",
+            category="OpenAI API/Options",
+            description="Controls token selection diversity by limiting the pool of next-token candidates to the top K most likely options. (Typically supported by local compatible engines like llama.cpp and Ollama).",
+            inputs=[
+                io.Int.Input(
+                    id="top_k",
+                    display_name="Top K",
+                    tooltip="Limits candidate pool to the top K tokens. Lower values focus output; higher values allow for more variety.",
+                    default=40,
+                    min=1,
+                    max=1000,
+                    step=1,
+                    display_mode=io.NumberDisplay.number,
+                ),
+                ParamOptions.Input(
+                    id="other_options",
+                    display_name="Options",
+                    optional=True,
+                    tooltip="Other options to merge with",
+                ),
+            ],
+            outputs=[
+                ParamOptions.Output(
+                    id="options",
+                    display_name="Options",
+                    tooltip="Merged options to forward",
+                ),
+            ],
+        )
+
+    @classmethod
+    def execute(cls,
+                top_k: int,
+                other_options: OptionsPayload | None = None,
+                ) -> io.NodeOutput:
+        if other_options is None:
+            options = {"top_k": top_k}
+        else:
+            options = other_options.get_options_copy()
+            options["top_k"] = top_k
+        return io.NodeOutput(
+            OptionsPayload(options)
+        )
+
+
+class OptionLlamaCppThinking(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="OAIAPI_LlamaCppThinking",
+            display_name="OpenAI API - Llama.cpp Thinking",
+            category="OpenAI API/Options",
+            description="Controls reasoning/thinking capabilities when utilizing a llama.cpp server endpoint with compatible thinking models.",
+            inputs=[
+                io.Boolean.Input(
+                    id="enable_thinking",
+                    display_name="Enable Thinking",
+                    tooltip="Toggle to enable or disable the model's inner reasoning chain.",
+                    default=True,
+                    label_on="enable",
+                    label_off="disable",
+                ),
+                io.Int.Input(
+                    id="reasoning_budget",
+                    display_name="Reasoning Budget",
+                    tooltip="Max tokens allocated to reasoning steps (0 for unlimited). Set to -1 to ignore.",
+                    default=-1,
+                    min=-1,
+                    max=16384,
+                    step=1,
+                    display_mode=io.NumberDisplay.number,
+                ),
+                ParamOptions.Input(
+                    id="other_options",
+                    display_name="Options",
+                    optional=True,
+                    tooltip="Other options to merge with",
+                ),
+            ],
+            outputs=[
+                ParamOptions.Output(
+                    id="options",
+                    display_name="Options",
+                    tooltip="Merged options to forward",
+                ),
+            ],
+        )
+
+    @classmethod
+    def execute(cls,
+                enable_thinking: bool,
+                reasoning_budget: int,
+                other_options: OptionsPayload | None = None,
+                ) -> io.NodeOutput:
+        if other_options is None:
+            options = {}
+        else:
+            options = other_options.get_options_copy()
+
+        # Safely extract or initialize the dictionary to avoid overwriting existing fields
+        chat_template_kwargs = options.get("chat_template_kwargs", {})
+        if not isinstance(chat_template_kwargs, dict):
+            chat_template_kwargs = {}
+
+        chat_template_kwargs["enable_thinking"] = enable_thinking
+
+        if reasoning_budget >= 0:
+            chat_template_kwargs["reasoning_budget"] = reasoning_budget
+        else:
+            chat_template_kwargs.pop("reasoning_budget", None)
+
+        options["chat_template_kwargs"] = chat_template_kwargs
+
+        return io.NodeOutput(
+            OptionsPayload(options)
+        )
