@@ -1,3 +1,17 @@
+Thanks to hekmon for the original nodes!
+
+I have added:
+
+- top_k sampler
+- audio input (works with Gemma 4)
+- node for thinking enable/disable toggle
+- node for reasoning levels: minimal, low, medium, high, xhigh, max
+- "Unload after generating" toggle to Chat Completion node, (works with llama-server in router mode)
+
+PS. my changes are completely vibecoded with Qwen 3.6/3.8 27B, code quality might be poor, I have zero expertise in coding.
+
+---
+
 # ComfyUI OpenAI API
 
 This repository contains ComfyUI nodes that integrates with the OpenAI API: it allows you to use language models and vision language models within your workflow.
