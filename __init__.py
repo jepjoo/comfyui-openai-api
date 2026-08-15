@@ -1,21 +1,24 @@
 from typing_extensions import override
+
 from comfy_api.latest import ComfyExtension, io
 
 from .client import Client
+
 from .completions import ChatCompletion
+
 from .options import (
-    OptionSeed, 
-    OptionTemperature, 
-    OptionMaxTokens, 
-    OptionTopP, 
-    OptionFrequencyPenalty, 
-    OptionPresencePenalty, 
-    OptionExtraBody, 
+    OptionSeed,
+    OptionTemperature,
+    OptionMaxTokens,
+    OptionTopP,
+    OptionFrequencyPenalty,
+    OptionPresencePenalty,
+    OptionExtraBody,
     OptionDeveloperRole,
     OptionTopK,
-    OptionLlamaCppThinking
+    OptionLlamaCppThinking,
+    OptionReasoningEffort
 )
-
 
 class OpenAIAPIExtension(ComfyExtension):
     @override
@@ -32,9 +35,9 @@ class OpenAIAPIExtension(ComfyExtension):
             OptionDeveloperRole,
             OptionExtraBody,
             OptionTopK,
-            OptionLlamaCppThinking
+            OptionLlamaCppThinking,
+            OptionReasoningEffort
         ]
-
 
 async def comfy_entrypoint() -> OpenAIAPIExtension:
     return OpenAIAPIExtension()
