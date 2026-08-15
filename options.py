@@ -4,8 +4,8 @@ from comfy_api.latest import io
 
 from .iotypes import ParamOptions, OptionsPayload
 
-
 class OptionSeed(io.ComfyNode):
+
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
@@ -47,12 +47,13 @@ class OptionSeed(io.ComfyNode):
         else:
             options = other_options.get_options_copy()
             options["seed"] = seed
+
         return io.NodeOutput(
             OptionsPayload(options)
         )
 
-
 class OptionTemperature(io.ComfyNode):
+
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
@@ -97,12 +98,13 @@ class OptionTemperature(io.ComfyNode):
         else:
             options = other_options.get_options_copy()
             options["temperature"] = temperature
+
         return io.NodeOutput(
             OptionsPayload(options)
         )
 
-
 class OptionMaxTokens(io.ComfyNode):
+
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
@@ -147,12 +149,13 @@ class OptionMaxTokens(io.ComfyNode):
         else:
             options = other_options.get_options_copy()
             options["max_tokens"] = max_tokens
+
         return io.NodeOutput(
             OptionsPayload(options)
         )
 
-
 class OptionTopP(io.ComfyNode):
+
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
@@ -197,12 +200,13 @@ class OptionTopP(io.ComfyNode):
         else:
             options = other_options.get_options_copy()
             options["top_p"] = top_p
+
         return io.NodeOutput(
             OptionsPayload(options)
         )
 
-
 class OptionFrequencyPenalty(io.ComfyNode):
+
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
@@ -247,12 +251,13 @@ class OptionFrequencyPenalty(io.ComfyNode):
         else:
             options = other_options.get_options_copy()
             options["frequency_penalty"] = frequency_penalty
+
         return io.NodeOutput(
             OptionsPayload(options)
         )
 
-
 class OptionPresencePenalty(io.ComfyNode):
+
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
@@ -297,12 +302,13 @@ class OptionPresencePenalty(io.ComfyNode):
         else:
             options = other_options.get_options_copy()
             options["presence_penalty"] = presence_penalty
+
         return io.NodeOutput(
             OptionsPayload(options)
         )
 
-
 class OptionDeveloperRole(io.ComfyNode):
+
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
@@ -345,12 +351,13 @@ class OptionDeveloperRole(io.ComfyNode):
         else:
             options = other_options.get_options_copy()
             options["use_developer_role"] = instructions_role
+
         return io.NodeOutput(
             OptionsPayload(options)
         )
 
-
 class OptionExtraBody(io.ComfyNode):
+
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
@@ -403,12 +410,13 @@ class OptionExtraBody(io.ComfyNode):
         else:
             options = other_options.get_options_copy()
             options.update(json.loads(extra_body))
+
         return io.NodeOutput(
             OptionsPayload(options)
         )
 
-
 class OptionTopK(io.ComfyNode):
+
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
@@ -453,12 +461,13 @@ class OptionTopK(io.ComfyNode):
         else:
             options = other_options.get_options_copy()
             options["top_k"] = top_k
+
         return io.NodeOutput(
             OptionsPayload(options)
         )
 
-
 class OptionLlamaCppThinking(io.ComfyNode):
+
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
@@ -516,14 +525,66 @@ class OptionLlamaCppThinking(io.ComfyNode):
         chat_template_kwargs = options.get("chat_template_kwargs", {})
         if not isinstance(chat_template_kwargs, dict):
             chat_template_kwargs = {}
-
         chat_template_kwargs["enable_thinking"] = enable_thinking
-
         if reasoning_budget >= 0:
             chat_template_kwargs["reasoning_budget"] = reasoning_budget
         else:
             chat_template_kwargs.pop("reasoning_budget", None)
+        options["chat_template_kwargs"] = chat_template_kwargs
 
+        return io.NodeOutput(
+            OptionsPayload(options)
+        )
+
+class OptionReasoningEffort(io.ComfyNode):
+
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="OAIAPI_ReasoningEffort",
+            display_name="OpenAI API - Reasoning Effort",
+            category="OpenAI API/Options",
+            description="Sets the level of reasoning effort for reasoning-capable models (like o1, o3, GPT-5, gpt-oss or Qwen3). Higher levels make the model 'think' more before answering, trading more time and tokens for better results.",
+            inputs=[
+                io.Combo.Input(
+                    id="reasoning_effort",
+                    options=["minimal", "low", "medium", "high", "xhigh", "max"],
+                    display_name="Reasoning Effort",
+                    tooltip="Level of reasoning effort to apply. Only used by reasoning models. Note: the official OpenAI API only accepts 'low', 'medium' and 'high'.",
+                    default="medium",
+                ),
+                ParamOptions.Input(
+                    id="other_options",
+                    display_name="Options",
+                    optional=True,
+                    tooltip="Other options to merge with",
+                ),
+            ],
+            outputs=[
+                ParamOptions.Output(
+                    id="options",
+                    display_name="Options",
+                    tooltip="Merged options to forward",
+                ),
+            ],
+        )
+
+    @classmethod
+    def execute(cls,
+                reasoning_effort: str,
+                other_options: OptionsPayload | None = None,
+                ) -> io.NodeOutput:
+        if other_options is None:
+            options = {}
+        else:
+            options = other_options.get_options_copy()
+
+        # Pass the level through chat_template_kwargs: this is the mechanism honored
+        # by llama.cpp (it drops the top-level OpenAI-style 'reasoning_effort' field)
+        chat_template_kwargs = options.get("chat_template_kwargs", {})
+        if not isinstance(chat_template_kwargs, dict):
+            chat_template_kwargs = {}
+        chat_template_kwargs["reasoning_effort"] = reasoning_effort
         options["chat_template_kwargs"] = chat_template_kwargs
 
         return io.NodeOutput(
