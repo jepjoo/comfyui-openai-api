@@ -3,9 +3,9 @@ Thanks to hekmon for the original nodes!
 I have added:
 
 - top_k sampler
-- audio input (works with Gemma 4)
+- audio input (works with Gemma 4, maybe universally with llama.cpp or even other backends, haven't tested)
 - node for thinking enable/disable toggle
-- node for reasoning levels: minimal, low, medium, high, xhigh, max
+- node for choosing reasoning levels: minimal, low, medium, high, xhigh, max
 - "Unload after generating" toggle to Chat Completion node, (works with llama-server in router mode)
 
 PS. my changes are completely vibecoded with Qwen 3.6/3.8 27B, code quality might be poor, I have zero expertise in coding.
